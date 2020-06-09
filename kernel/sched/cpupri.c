@@ -27,7 +27,9 @@
  *  of the License.
  */
 
+#ifndef CONFIG_SCHED_BFS
 #include "sched.h"
+#endif
 
 #include <linux/gfp.h>
 #include <linux/sched.h>
@@ -52,6 +54,7 @@ static int convert_prio(int prio)
 	return cpupri;
 }
 
+#ifndef CONFIG_SCHED_BFS
 /**
  * cpupri_find - remove a cpu from the mask if it is likely non-preemptible
  * @lowest_mask: mask with selected CPUs (non-NULL)
@@ -69,6 +72,7 @@ drop_nopreempt_cpus(struct cpumask *lowest_mask)
 		cpu = cpumask_next(cpu, lowest_mask);
 	}
 }
+#endif
 
 /**
  * cpupri_find - find the best (lowest-pri) CPU in the system
@@ -90,11 +94,15 @@ int cpupri_find(struct cpupri *cp, struct task_struct *p,
 {
 	int idx = 0;
 	int task_pri = convert_prio(p->prio);
+#ifndef CONFIG_SCHED_BFS
 	bool drop_nopreempts = task_pri <= MAX_RT_PRIO;
+#endif
 
 	BUG_ON(task_pri >= CPUPRI_NR_PRIORITIES);
 
+#ifndef CONFIG_SCHED_BFS
 retry:
+#endif
 	for (idx = 0; idx < task_pri; idx++) {
 		struct cpupri_vec *vec  = &cp->pri_to_cpu[idx];
 		int skip = 0;
@@ -130,9 +138,11 @@ retry:
 
 		if (lowest_mask) {
 			cpumask_and(lowest_mask, &p->cpus_allowed, vec->mask);
+#ifndef CONFIG_SCHED_BFS
 			if (drop_nopreempts) {
 				drop_nopreempt_cpus(lowest_mask);
 			}
+#endif
 			/*
 			 * We have to ensure that we have at least one bit
 			 * still set in the array, since the map could have
@@ -147,6 +157,7 @@ retry:
 
 		return 1;
 	}
+#ifndef CONFIG_SCHED_BFS
 	/*
 	 * If we can't find any non-preemptible cpu's, retry so we can
 	 * find the lowest priority target and avoid priority inversion.
@@ -155,6 +166,7 @@ retry:
 		drop_nopreempts = false;
 		goto retry;
 	}
+#endif
 	return 0;
 }
 
